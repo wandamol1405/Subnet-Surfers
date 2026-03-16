@@ -1,7 +1,9 @@
 # Redes de Computadoras
 Este repositorio contiene los trabajos prácticos de la materia Redes de Computadoras, realizados como parte de la cursada de la carrera de Ingeniería en Computación.
 ## Contenido
-Cada carpeta corresponde a un trabajo practico (TP) de la materia
+Cada carpeta corresponde a un trabajo practico (TP) de la materia:
+
+- TP1: Simulación de envío de paquetes, ARP y ruteo entre redes.
 
 ## Objetivo
 El objetivo de este repositorio es documentar y centralizar los ejercicios prácticos y experimentos realizados durante la cursada, con el fin de:
