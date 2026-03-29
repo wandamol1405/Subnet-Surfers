@@ -44,13 +44,44 @@ Redes de Computadoras
 
 ## Resumen
 
+En el presente trabajo práctico se abordaron conceptos fundamentales de las redes de computadoras mediante actividades tanto teóricas como prácticas. Se trabajó sobre el armado y verificación de un cable Ethernet, así como también sobre la configuración y análisis del funcionamiento de dispositivos de red como switches.
+
+El desarrollo del trabajo permitió integrar conocimientos teóricos con experiencias prácticas, facilitando una mejor comprensión del funcionamiento real de las redes.
+
 ---
 
 ## Introducción
 
+Las redes de computadoras constituyen la base de la comunicación moderna entre sistemas, permitiendo el intercambio de información de manera eficiente y estructurada. Para lograr dicha comunicación, es necesario definir reglas y estructuras que permitan a distintos dispositivos entenderse entre sí, independientemente de su fabricante o tecnología.
+
+En este contexto, los protocolos de comunicación juegan un rol fundamental, ya que establecen las normas que regulan el envío y recepción de datos. Asimismo, la organización de estos protocolos en arquitecturas en capas permite dividir un problema complejo en partes más simples, facilitando su diseño, implementación y mantenimiento.
+
+El presente trabajo práctico tiene como objetivo introducir estos conceptos mediante actividades prácticas y su correspondiente fundamentación teórica, permitiendo al estudiante comprender tanto el funcionamiento físico de una red como los principios lógicos que la gobiernan.
+
 ---
 
 ## Marco Teórico
+
+En una red de computadoras, la comunicación entre entidades se realiza mediante protocolos, los cuales pueden definirse como un conjunto de reglas que determinan el formato, significado y orden de los mensajes intercambiados entre sistemas.
+
+Dado que la comunicación es un proceso complejo, los protocolos no se implementan de manera aislada, sino organizados en arquitecturas en capas. En este tipo de estructura, cada nivel cumple una función específica y provee servicios al nivel superior, permitiendo así una mayor modularidad y abstracción del sistema.
+
+Una de las principales ventajas de esta organización es que cada capa puede evolucionar de forma independiente sin afectar a las demás, siempre que se mantengan las interfaces entre ellas. Ejemplos de estas arquitecturas son el modelo OSI y la pila de protocolos TCP/IP.
+
+El intercambio de información entre capas se realiza mediante unidades de datos del protocolo (PDU), las cuales contienen tanto los datos como la información de control necesaria para su transmisión. Este proceso se denomina encapsulamiento, donde cada capa agrega su propia información de control a los datos recibidos.
+
+Los protocolos cumplen diversas funciones esenciales para garantizar una comunicación eficiente, entre las que se destacan:
+- Segmentación y ensamblado de datos
+- Control de conexión
+- Entrega en orden
+- Control de flujo
+- Control de errores
+- Direccionamiento
+
+Por ejemplo, la segmentación permite dividir grandes volúmenes de datos en unidades más pequeñas (PDU) para facilitar su transmisión, mientras que el control de errores permite detectar y recuperar información dañada durante el envío.
+
+En conjunto, estos mecanismos permiten que la comunicación entre sistemas sea confiable, ordenada y eficiente, incluso en entornos complejos como las redes actuales.
+
 
 ---
 
@@ -342,3 +373,11 @@ _Imagen X. Conexión mediante ping exitosa_
 Durante el ping se observó la comunicación exitosa entre los hosts conectados al swith y el correcto funcionamiento del cableado.
 
 ## Conclusión
+
+El desarrollo de este trabajo práctico permitió comprender de manera integral cómo se lleva a cabo la comunicación en redes de computadoras, tanto desde una perspectiva física como lógica.
+
+Las actividades realizadas, como el armado de cables y la interacción con dispositivos de red, brindaron una visión concreta del funcionamiento de la capa física y de enlace. Por otro lado, el análisis teórico de protocolos, PDU y arquitecturas en capas permitió entender cómo se organiza y gestiona el intercambio de información.
+
+Se puede concluir que la correcta implementación de protocolos y su estructuración en capas resulta fundamental para garantizar la interoperabilidad, eficiencia y confiabilidad en las comunicaciones. Asimismo, la combinación de teoría y práctica resulta clave para afianzar los conocimientos en el área de redes.
+
+Finalmente, este trabajo sienta las bases necesarias para abordar conceptos más avanzados dentro del estudio de redes de computadoras.
