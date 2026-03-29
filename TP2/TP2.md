@@ -99,7 +99,7 @@ El procedimiento realizado fue el siguiente:
 
 ![Cable armado](resources/cable-armado.jpeg)
 
-_Imagen X. Cable Armado_
+_Imagen 1. Cable Armado_
 
 #### Verificación del cable
 Se realizó la verificación mediante:
@@ -121,11 +121,11 @@ Intercambiamos el cable con otro grupo y confirmamos que realizaron correctament
 
 ![Verificacion del cable armado por otro grupo (1)](resources/verificacion-cable-otro-grupo-1.jpeg)
 
-_Imagen X. Verificación del cable armado por otro grupo (1)_
+_Imagen 2. Verificación del cable armado por otro grupo (1)_
 
 ![Verificacion del cable armado por otro grupo (2)](resources/verificacion-cable-otro-grupo-2.jpeg)
 
-_Imagen X. Verificación del cable armado por otro grupo (2)_
+_Imagen 3. Verificación del cable armado por otro grupo (2)_
 
 ### Parte 2: Uso del switch Cisco
 Esta parte consiste en configurar y acceder a un switch para comprender su funcionamiento y realizar pruebas de conectividad.
@@ -143,11 +143,11 @@ Se configuró PuTTY con los siguientes parámetros:
 
 ![Configuracion de PuTTY](resources/configuracion-PuTTY-1.png)
 
-_Imagen X. Configuración de PuTTY (1)_
+_Imagen 4. Configuración de PuTTY (1)_
 
 ![Configuracion de PuTTY](resources/configuracion-PuTTY-2.png)
 
-_Imagen X. Configuración de PuTTY (2)_
+_Imagen 5. Configuración de PuTTY (2)_
 
 Se logró acceder correctamente a la consola del switch.
 
@@ -341,7 +341,7 @@ Press RETURN to get started.
 
 ![Entrada a la consola del switch](resources/entrada-consola-switch.png)
 
-_Imagen X. Entrada a la consola del switch_
+_Imagen 6. Entrada a la consola del switch_
 
 #### Problemas encontrados
 El switch solicitaba contraseña de acceso, por lo que no fue posible acceder correctamente.
@@ -354,21 +354,21 @@ Utilizando otro switch y conectandose al mismo utilizando el calbe Ethernet arma
 | PC1 (otro grupo)| 192.168.1.1  | 255.255.255.0 |
 | PC2 (nuestro grupo)| 192.168.1.2  | 255.255.255.0 |
 
-_Tabla X. Configuracion de IPs con el switch_
+_Tabla 1. Configuracion de IPs con el switch_
 
 ![Configuracion de IP manual (1)](resources/configuracion-IP-manual.png)
 
-_Imagen X. Configuracion de IP manual (1)_
+_Imagen 7. Configuracion de IP manual (1)_
 
 ![Configuracion de IP manual (2)](resources/configuracion-IP-manual-2.png)
 
-_Imagen X. Configuracion de IP manual (2)_
+_Imagen 8. Configuracion de IP manual (2)_
 
 Se comprobó la conectividad utilizando el comando `ping <IP>`, obteniendo resultados positivos.
 
 ![Conexión mediante ping exitosa](resources/conexion-ping-exitosa.png)
 
-_Imagen X. Conexión mediante ping exitosa_
+_Imagen 9. Conexión mediante ping exitosa_
 
 Durante el ping se observó la comunicación exitosa entre los hosts conectados al swith y el correcto funcionamiento del cableado.
 
