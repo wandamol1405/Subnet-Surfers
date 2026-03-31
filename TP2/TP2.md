@@ -114,7 +114,7 @@ Se utilizó un tester de cables Ethernet y resultó positivo.
 
 ![Verificación del cable armado](resources/verificacion-cable-armado.gif)
 
-_GIF X. Verificación del cable armado_
+_GIF 1. Verificación del cable armado_
 
 #### Intercambio con otro grupo
 Intercambiamos el cable con otro grupo y confirmamos que realizaron correctamente el armado del cable.
