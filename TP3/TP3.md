@@ -88,6 +88,16 @@ Finalmente, el despliegue de un servidor HTTP sencillo dentro de la VM permite v
 
 ## Resultados
 
+-TCP-
+Se puede ver el mensaje enviado a la VM desde local, pero no el mensaje enviado desde la VM a la compu local
+
+-UDP-
+El mensaje se puede ver tanto de un lado como del otro
+
+-HTTP-
+Se puede ver el trafico de la página en wireshark
+
+
 ---
 
 ## Conclusión
