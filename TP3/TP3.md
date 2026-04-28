@@ -86,6 +86,50 @@ Finalmente, el despliegue de un servidor HTTP sencillo dentro de la VM permite v
 
 ---
 
+## Análisis del video de Veritasium
+*a) Relación del problema del video con los TPs 1, 2 y 3*
+
+El problema abordado en el video se relaciona directamente con varios de los conceptos trabajados en los trabajos prácticos anteriores, especialmente con la transmisión segura de información en redes, la integridad de los datos y la confidencialidad de las comunicaciones.
+
+En primer lugar, puede vincularse con el TP 1, donde se estudió cómo viajan los paquetes a través de la red, pasando por distintos nodos intermedios mediante un esquema de ruteo hop-by-hop. En el video se evidencia que la comunicación entre el dispositivo móvil, la terminal de pago y los servidores de validación también depende de una secuencia de intercambios de mensajes a través de la red. Es decir, la transacción no ocurre “directamente”, sino que involucra múltiples sistemas intermedios, de forma análoga al recorrido de paquetes IP visto en el laboratorio.
+
+Por otro lado, la situación también se relaciona con la parte 2 del TP 1, referida a la detección e integridad de errores (EDAC). Allí aprendimos que no solo importa que la información llegue, sino que además debe mantenerse íntegra y poder validarse. En el caso mostrado por el video, el problema no es un error físico de bits, sino una falla lógica en la validación del mensaje transmitido. Es decir, el sistema acepta una operación que no debería considerarse válida, lo cual demuestra que además de detectar errores en los datos, es fundamental verificar correctamente la legitimidad del mensaje y su contexto.
+
+Finalmente, la relación más directa aparece con el TP 3, donde trabajamos con SSH, HTTP, Wireshark y confidencialidad. En ese laboratorio observamos que algunas comunicaciones pueden ser inspeccionadas fácilmente cuando no están cifradas, mientras que protocolos como SSH protegen el contenido. El video demuestra precisamente la importancia de la seguridad en las comunicaciones: aunque los datos puedan viajar correctamente, si existe una vulnerabilidad en cómo se autentican o validan las transacciones, el sistema sigue siendo inseguro.
+
+En síntesis, se aplican directamente los siguientes conceptos aprendidos:
+
+transmisión de información a través de redes
+paso por múltiples sistemas intermedios
+validación e integridad de los mensajes
+autenticación de entidades
+confidencialidad de la comunicación
+seguridad lógica además de seguridad física del canal
+
+*b) Consideraciones según el principio de confidencialidad y los resultados del laboratorio*
+
+A partir del principio de confidencialidad en redes de computadoras, el video pone en evidencia que no alcanza únicamente con cifrar la comunicación.
+
+En el TP 3 observamos que protocolos como SSH protegen el contenido transmitido, evitando que terceros puedan leer credenciales o mensajes mediante herramientas como Wireshark. Sin embargo, el caso mostrado en el video demuestra que incluso si la información viaja cifrada, pueden existir vulnerabilidades en la lógica de autenticación y autorización.
+
+Por lo tanto, además de la confidencialidad, se deben considerar otros principios fundamentales de seguridad:
+
+_autenticación:_ verificar que quien inicia la operación sea realmente el usuario legítimo
+_integridad:_ asegurar que los mensajes no sean modificados
+_autorización:_ validar que la operación esté permitida
+_no repudio / trazabilidad:_ registrar correctamente quién realizó la acción
+
+A partir de los resultados obtenidos en el laboratorio, también debemos tener en cuenta que:
+
+- protocolos sin cifrado exponen información sensible
+- los datos visibles en red pueden ser interceptados
+- una mala implementación de seguridad puede comprometer el sistema incluso usando cifrado
+- la seguridad depende tanto del protocolo como de la lógica de aplicación
+
+En conclusión, el video refuerza una idea central de la materia: la seguridad en redes no depende solamente del transporte de los datos, sino también de cómo los sistemas interpretan, validan y autorizan la información que reciben.
+
+---
+
 ## Resultados
 
 -TCP-
