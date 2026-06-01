@@ -4,6 +4,10 @@ Este repositorio contiene los trabajos prácticos de la materia Redes de Computa
 Cada carpeta corresponde a un trabajo practico (TP) de la materia:
 
 - TP1: Simulación de envío de paquetes, ARP y ruteo entre redes.
+- TP2: Simulación de envío de paquetes, ARP y ruteo entre redes.
+- TP3: Introducción a infraestructura de servicios web con perspectiva de redes.
+- TP4: Implementación de comunicación cliente-servidor segura mediante sockets TCP.
+- TP FINAL: Análisis del protocolo NTP en redes TCP/IP: funcionamiento, vulnerabilidades y mecanismos de mitigación.
 
 ## Objetivo
 El objetivo de este repositorio es documentar y centralizar los ejercicios prácticos y experimentos realizados durante la cursada, con el fin de:
