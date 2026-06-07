@@ -9,8 +9,8 @@ const char *password = "12345678";
 const byte DNS_PORT = 53;
 DNSServer dnsServer;
 
-// IP DE TU KALI LINUX (Modifícala con la IP real que te dé Kali en el puente)
-IPAddress ipKali(192, 168, 4, 100);
+// IP DE UBUNTU
+IPAddress ipKali(192, 168, 4, 2);
 
 // Configuración de red para el AP de la ESP32
 IPAddress apIP(192, 168, 4, 1);

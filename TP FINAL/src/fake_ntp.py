@@ -38,13 +38,13 @@ while True:
         windows_time_unix = (client_sec - 2208988800) + (client_frac / (2**32))
 
         # 3. APLICAR EL ENGAÑO EXCLUSIVAMENTE SOBRE LA HORA DE WINDOWS
-        fake_transmit_time = windows_time_unix + OFFSET
-        fake_receive_time = windows_time_unix + 0.002 # Simula llegada 2ms antes
+        fake_receive_time = windows_time_unix + OFFSET 
+        fake_transmit_time = fake_receive_time + 0.002
 
         # 4. CONVERTIR LOS NUEVOS TIEMPOS FALSEADOS DE VUELTA A FORMATO NTP
         tx_sec, tx_frac = unix_to_ntp_parts(fake_transmit_time)
         rx_sec, rx_frac = unix_to_ntp_parts(fake_receive_time)
-        ref_sec, ref_frac = unix_to_ntp_parts(fake_transmit_time - 60) # Estabilidad simulada
+        ref_sec, ref_frac = unix_to_ntp_parts(fake_receive_time - 60) # Estabilidad simulada
 
         # 5. CONSTRUIR EL PAQUETE NTP DESDE CERO (48 Bytes estrictos)
         pkt = bytearray(48)
