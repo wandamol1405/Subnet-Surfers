@@ -1,100 +1,179 @@
 # Simulación de Vulnerabilidad en Protocolos de Sincronización Temporal mediante Técnicas Man-in-the-Middle (MitM) y Spoofing de Capa de Aplicación
 
-Este repositorio contiene la documentación, el código fuente y el análisis de la implementación práctica de un entorno controlado destinado a simular la interceptación, manipulación e inyección de datos sobre el protocolo de tiempo de red **NTPv3 (Network Time Protocol)**. El objetivo primordial es analizar los vectores de riesgo en infraestructuras de sincronización y evaluar los mecanismos de defensa integrados en los sistemas operativos modernos.
+Este repositorio contiene la documentación, el código fuente definitivo y el análisis de la implementación práctica de un entorno controlado destinado a simular la interceptación, manipulación e inyección de datos sobre el protocolo de tiempo de red **NTP (Network Time Protocol)**. 
+
+A través de esta práctica, se recrea un escenario real de desincronización horaria utilizando hardware físico heredado (*legacy*) y microcontroladores, evaluando las barreras de protección internas de los sistemas operativos y los mecanismos de análisis forense de red.
 
 ---
 
-## 1. Fundamento Teórico y Mecanismos del Protocolo NTPv3
+## 1. Fundamento Teórico y Mecanismos del Protocolo NTP
 
-El protocolo NTPv3 (especificado en la RFC 1305) opera sobre el protocolo de transporte UDP utilizando el puerto asignado 123. Su arquitectura se basa en una jerarquía de niveles de confianza denominados *Strata* (Estratos), donde Stratum 0 representa a los dispositivos de hardware de reloj atómico o GPS directos, y Stratum 1 representa a los servidores directamente conectados a estos.
+El protocolo NTP (especificado desde su versión v3 en la RFC 1305 y v4 en la RFC 5905) opera sobre el protocolo de transporte UDP utilizando el puerto asignado 123. Su arquitectura se basa en una jerarquía de niveles de confianza denominados *Strata* (Estratos), donde Stratum 0 representa a los dispositivos de hardware de reloj de alta precisión (atómicos, GPS) y Stratum 1 representa a los servidores de referencia primaria directamente conectados a estos.
 
-A diferencia de otros protocolos de red, NTP no se limita a transferir un dato estático; implementa un algoritmo matemático complejo de estimación de desfase de fase (*offset*) y retraso de ida y vuelta (*round-trip delay*). Para lograr esto de forma asíncrona a través de una red inherentemente inestable, cada intercambio estándar consta de cuatro marcas de tiempo (Timestamps) esenciales de 64 bits:
-
-1. **Originate Timestamp ($T_1$):** El tiempo local del cliente en el momento de despachar la solicitud.
-2. **Receive Timestamp ($T_2$):** El tiempo local del servidor en el momento de recibir la solicitud.
-3. **Transmit Timestamp ($T_3$):** El tiempo local del servidor en el momento de despachar la respuesta.
-4. **Destination Timestamp ($T_4$):** El tiempo local del cliente en el momento de recibir la respuesta del servidor.
-
-El cliente calcula el desplazamiento real del reloj ($\theta$) utilizando la ecuación:
+Cada intercambio estándar consta de cuatro marcas de tiempo (Timestamps) esenciales de 64 bits para estimar de forma matemática el desplazamiento real del reloj ($\theta$) y el retraso de ida y vuelta:
+1. **Originate Timestamp ($T_1$):** Tiempo local del cliente al despachar la solicitud.
+2. **Receive Timestamp ($T_2$):** Tiempo local del servidor al recibir la solicitud.
+3. **Transmit Timestamp ($T_3$):** Tiempo local del servidor al despachar la respuesta.
+4. **Destination Timestamp ($T_4$):** Tiempo local del cliente al recibir la respuesta.
 
 $$\theta = \frac{(T_2 - T_1) + (T_3 - T_4)}{2}$$
 
-### El Desafío de los "Sanity Checks" (Controles de Sanidad)
-Los clientes NTP implementan filtros rígidos para evitar ataques de repetición (*replay attacks*) o inyecciones de datos desfasados. El control más estricto es la validación del **Originate Timestamp**: el cliente almacena temporalmente el valor $T_1$ enviado en su paquete de solicitud. Cuando recibe la respuesta del servidor, el campo correspondiente a *Originate Timestamp* en el datagrama de retorno debe coincidir bit a bit con el $T_1$ guardado. Si existe una discrepancia en un solo bit, el paquete se descarta de forma automática en la capa de aplicación sin procesar el cálculo.
+### Los Filtros de Sanidad del Cliente (Sanity Checks)
+Los motores de tiempo implementan algoritmos rígidos de validación para descartar paquetes anómalos o maliciosos:
+* **Validación de Origen:** El campo *Originate Timestamp* en el datagrama de retorno del servidor debe coincidir bit a bit con el $T_1$ enviado y guardado temporalmente por el cliente. Si existe una discrepancia, el paquete se descarta.
+* **Filtros de Dispersión y Retransmisión (Test 4):** El cliente evalúa la coherencia temporal interna del paquete recibido. La diferencia entre el momento en que el servidor declara haber recibido el paquete ($T_2$) y el momento en que lo transmitió ($T_3$) representa el tiempo de procesamiento interno del host remoto. Si este delta introduce una latencia absurda en comparación con la dispersión de raíz declarada, el cliente asume una falla crítica en la estabilidad de la red y rechaza la muestra.
 
 ---
 
-## 2. Arquitectura de Red y Vector de Ataque Implementado
+## 2. Arquitectura de Red del Escenario Físico
 
-La simulación se estructuró a partir de una topología de tres nodos diseñada para subvertir el canal de comunicación sin alterar la configuración IP nativa del host objetivo:
+El laboratorio se estructuró a partir de una topología real de tres nodos físicos independientes:
 
 
 ```
 
-[ Host Víctima (Windows) ]
-│ (Consulta NTP legítima a pool externo)
+[ Host Víctima (Windows 7 - Intel Atom) ]
+│
+│ (Consulta NTP de Capa de Aplicación a time.google.com)
 ▼
-[ Interceptor AP (ESP32) ] ── (DNS Spoofing: fuerza resolución local) ──► [ Servidor Falso (Ubuntu) ]
-│ (Genera paquete espejo v3)
+[ Interceptor AP + DNS (ESP32) ] ── (DNS Spoofing: Redirección '*') ──► [ Servidor Falso (Ubuntu) ]
+│
 ▼
 [ Inyección de Desfase (+600s) ]
+[ Reconstrucción síncrona NTPv4 ]
 
 ```
 
-1. **Ataque de Capa de Enlace y Red (Rogue AP + DNS Spoofing en ESP32):** El microcontrolador despliega un punto de acceso inalámbrico que clona una red conocida o legítima. Mediante un servidor DNS embebido que escucha en el puerto 53 UDP, intercepta las peticiones de resolución de nombres de servidores de tiempo (como `time.windows.com` o `time.google.com`) y responde de forma maliciosa apuntando hacia la dirección IP del host Ubuntu.
-2. **Manipulación en Capa de Aplicación (`fake_ntp.py` en Ubuntu):** Escuchando en el puerto 123 UDP, el script de Python recibe el datagrama desviado. En lugar de responder con la hora de su propio reloj de hardware, ejecuta una ingeniería inversa del paquete del cliente en tiempo real para generar una respuesta válida y acoplada a sus expectativas matemáticas.
+1. **Nodo Víctima (Hardware Dedicado):** Computadora portátil con arquitectura Intel Atom y 1 GB de RAM corriendo una instalación limpia de **Windows 7 Professional (32 bits)**. Este entorno representa un sistema heredado ideal debido a la laxitud nativa de sus directivas de fase independientes fuera de dominio (*Workgroup*), facilitando la asimilación del salto temporal.
+2. **Nodo Interceptor (ESP32):** Actúa como punto de acceso inalámbrico (*Rogue AP*). Incorpora un servidor DNS embebido que intercepta cualquier solicitud en el puerto 53 UDP (`*`) y falsifica la resolución apuntando la identidad de dominios como `time.google.com` o `time.windows.com` hacia la IP del servidor atacante.
+3. **Nodo Servidor Falso (Ubuntu):** Host encargado de capturar las peticiones en el puerto 123 UDP y procesar la inyección matemática mediante un script optimizado en Python.
 
 ---
 
-## 3. Desglose Técnico del Script `fake_ntp.py`
+## 3. Consideraciones Técnicas y Evolución de los Scripts
 
-El script implementa una reconstrucción dinámica de datagramas binarios mediante el uso intensivo del módulo `struct` de Python para el empaquetado de estructuras en formato de red Big-Endian (`!`).
+### 3.1 Firmware de la ESP32: Interceptación y Monitoreo Asíncrono
+El código cargado en el microcontrolador gestiona de forma prioritaria el backend DNS mutando las solicitudes de red. Se integraron las librerías nativas del framework de Espressif (`esp_wifi.h`) para implementar una rutina de inspección no bloqueante basada en `millis()`. Esto permite auditar en tiempo real el estado de conexión de los hosts por el Monitor Serial (mostrando IPs asignadas por DHCP y MACs físicas), alertando de inmediato si la víctima sufre una desconexión inalámbrica sin interrumpir el flujo de procesamiento de paquetes DNS.
 
-### Puntos Críticos del Código:
-* **Aislamiento de Origen:** El script lee dinámicamente los bytes del 40 al 47 del paquete entrante (`data[40:48]`), los cuales contienen la marca exacta de transmisión del cliente. Este bloque se inyecta directamente en la posición de respuesta asignada al *Originate Timestamp* (bytes 24 al 31), superando el filtro de sanidad principal del sistema operativo.
-* **Conversión de Épocas Temporales:** Python y los sistemas Unix miden el tiempo en segundos acumulados desde el 1 de enero de 1970 (Época Unix). Por su parte, el protocolo NTP mide el tiempo en segundos transcurridos desde el 1 de enero de 1900. El script compensa esta brecha sumando la constante matemática de **2,208,988,800 segundos**, dividiendo la fracción decimal resultante en un entero de 32 bits para alcanzar la precisión requerida de microsegundos en la red.
-* **Modelado de Parámetros de Estabilidad:** Los sistemas operativos descartan servidores temporales que demuestren inestabilidad o alta variabilidad. El script fuerza los campos de **Root Delay** (retraso de raíz) y **Root Dispersion** (dispersión de raíz) a valores hexadecimales mínimos estables (`0x00000A00`), simulando una red de latencia ultra-baja y una precisión de reloj de hardware atómico (Stratum 2, precisión `-20`).
+### 3.2 Script Atacante: `fake_ntp.py` (Python 3)
+El script en la máquina Ubuntu evolucionó a partir de los hallazgos de bajo nivel analizados en el laboratorio:
+* **Elevación de Jerarquía y Flags (NTPv4):** Se configuró el bit de cabecera en `0x24` para forzar el uso de la versión 4 en modo servidor. Se modificó el nivel a **Stratum 1** y se inyectó la firma ASCII de 4 bytes `'GPS\x00'` en el campo *Reference Identifier*, simulando una fuente de reloj atómico satelital para evadir restricciones de reputación.
+* **Mitigación del "Packet Test 4 Failed":** Durante la experimentación inicial, el servicio `w32time` de Windows descartaba los paquetes arrojando en los logs locales la advertencia de dispersión anómala debido a un desajuste en los deltas temporales del servidor. La corrección definitiva consistió en sincronizar de forma síncrona la percepción temporal del servidor falso: el `OFFSET` se aplica en paralelo sobre el *Receive Timestamp* y el *Transmit Timestamp*, simulando que el paquete entró y salió del servidor en un intervalo real de procesamiento de apenas **2 microsegundos**.
+
+```python
+# Extracto crítico de la corrección matemática en fake_ntp.py
+fake_receive_time = windows_time_unix + OFFSET
+fake_transmit_time = fake_receive_time + 0.002  # Corrige el Test 4 de la RFC
+
+tx_sec, tx_frac = unix_to_ntp_parts(fake_transmit_time)
+rx_sec, rx_frac = unix_to_ntp_parts(fake_receive_time)
+
+```
 
 ---
 
-## 4. Análisis de las Directivas locales de Windows (`w32time`)
+## 4. Análisis Forense y Depuración en el Sistema Operativo (`w32time`)
 
-Durante la fase de experimentación en laboratorios locales, se constató que las versiones modernas del servicio de tiempo de Windows (`w32time`) implementan protecciones de kernel adicionales para mitigar ataques de inyección temporal abruptos. Dos de estas directivas críticas operan directamente en el Registro del Sistema:
+Para desestructurar los rechazos del cliente, se habilitó el motor de auditoría interna de Windows 7 mediante la inyección en la Línea de Comandos de registros de depuración avanzados:
 
-* **MaxPosPhaseCorrection / MaxNegPhaseCorrection:** Definen el umbral máximo de segundos (hacia adelante o hacia atrás) que el sistema operativo está dispuesto a aceptar de un servidor NTP en una sola transacción. Si el desfase inyectado supera este límite establecido por la directiva local, el paquete se descarta de forma silenciosa por considerarse una anomalía de red o un ataque.
-* **Mecanismo MS-SNTP:** En entornos corporativos o de dominio, Windows requiere obligatoriamente firmas criptográficas de clave simétrica integradas con Kerberos y Active Directory. 
+```cmd
+w32tm /debug /enable /file:C:\windows\temp\w32time.log /size:10000000 /entries:0-300
 
-*Nota del laboratorio:* El entorno simulado demostró una efectividad del 100% en las capas de red, enlace y transporte al procesar, clonar e inyectar el tráfico modificado. Para validar el impacto final en la capa de interfaz de usuario de la víctima en este entorno local aislado, se emuló la aceptación del cambio temporal desactivando localmente los filtros de fase mediante la flexibilización de los registros de corrección máxima (`ffffffff`), forzando al motor a asimilar el salto temporal inyectado de **600 segundos**.
+```
+
+Al inspeccionar el archivo resultante `w32time.log`, se identificó la traza exacta que demostraba la efectividad del desvío de red de la ESP32 y el motivo del bloqueo del kernel de Windows:
+
+```text
+ListeningThread -- response heard from 192.168.4.3:123
+Stratum: 1 - primary reference (syncd by radio clock) | Source name: "GPS"
+Packet test 4 failed (bad value for delay or dispersion)
+Ignoring packet that failed tests from time.google.com
+
+```
+
+### Endurecimiento del Registro Local (Hardening Post-Laboratorio)
+
+Para asegurar la total permeabilidad de la inyección temporal de 10 minutos (600 segundos) en el entorno de pruebas, se procedió a flexibilizar los límites de fase nativos del sistema desde el Editor del Registro (`regedit`), modificando las llaves en la ruta `HKLM\SYSTEM\CurrentControlSet\Services\W32Time\Config`:
+
+* **MaxPosPhaseCorrection:** Fijado en `4294967295` (Decimal).
+* **MaxNegPhaseCorrection:** Fijado en `4294967295` (Decimal).
 
 ---
 
-## 5. Guía de Despliegue y Validación Financiera / Técnica
+## 5. Guía de Despliegue y Validación Práctica
 
-### Paso 1: Ejecución del Script Interceptor (Ubuntu)
-Se inicializa el servidor especificando el desfase exacto de 10 minutos (600 segundos) como argumento de ejecución:
+### Paso 1: Inicialización del Entorno de Red (ESP32)
+
+1. Energizar el microcontrolador ESP32.
+2. Verificar mediante el monitor serial que el AP se levante bajo el SSID `ESP32_AP` y comience el rastreo activo de estaciones.
+
+### Paso 2: Despliegue del Daemon Atacante (Ubuntu)
+
+Inicializar el script especificando el argumento de desfase en segundos (ej. 600 segundos para avanzar el reloj 10 minutos):
+
 ```bash
 sudo python3 fake_ntp.py 600
 
 ```
 
-### Paso 2: Ejecución de Comandos de Sincronización (Windows)
+### Paso 3: Forzado de Sincronización (Víctima Windows 7)
 
-Desde una consola CMD con privilegios de Administrador, se limpia la caché del despachador y se fuerza la consulta instantánea a través de la red controlada por la ESP32:
+Desde una consola CMD con privilegios de Administrador, ejecutar la secuencia de comandos para limpiar los resolvedores locales y exigir la actualización inmediata a través del canal controlado:
 
 ```cmd
+:: 1. Restablecer la interfaz y limpiar cachés de red
+ipconfig /flushdns
+
+:: 2. Reiniciar el servicio de tiempo aplicando el flag de intervalo especial (0x1 o 0x9)
 net stop w32time
-w32tm /config /manualpeerlist:"[IP_DE_UBUNTU],0x8" /syncfromflags:manual /update
+w32tm /config /manualpeerlist:"192.168.4.3,0x9" /syncfromflags:manual /update
 net start w32time
+
+:: 3. Forzar el refresco de sincronización
 w32tm /resync /rediscover
 
 ```
 
-## 6. Conclusiones y Contramedidas Académicas
+---
 
-La realización de esta práctica de laboratorio evidencia que las debilidades del protocolo NTP estándar no residen en su robustez matemática para el cálculo de latencias, sino en su **ausencia nativa de mecanismos de autenticación y cifrado en el canal**. Si un atacante adquiere la capacidad de controlar el enrutamiento de los paquetes (a través de capas de enlace comprometidas como un Rogue AP o envenenamientos ARP/DNS), las validaciones estructurales básicas del protocolo se vuelven insuficientes.
+### 6. Resultados y Evidencias Técnicas
 
-Como principales líneas de defensa recomendadas para mitigar estos riesgos en infraestructuras críticas, se plantean:
+El experimento concluyó con un éxito del 100%. Tras aplicar la corrección en el cálculo de las marcas de tiempo síncronas en el script de Python, el motor `w32time` de la netbook procesó el datagrama modificado sin reportar anomalías. El sistema operativo arrojó la salida estándar `"El comando se completó correctamente"`, desplazando el reloj de la barra de tareas en intervalos exactos de 10 minutos hacia el futuro en cada ciclo de petición de forma automática.
 
-1. **Implementación de NTS (Network Time Security):** Extensión moderna de NTP que utiliza TLS para autenticar las fuentes de tiempo y asegurar criptográficamente los datagramas contra manipulaciones de terceros en tránsito.
-2. **Autenticación Simétrica Clásica:** Configurar archivos de llaves compartidas (`ntp.keys`) entre los servidores y los clientes de la organización, forzando al daemon a descartar cualquier paquete que no incorpore un hash MAC válido generado con la clave simétrica correspondiente.
-3. **Hardening de Políticas Locales:** Mantener configuraciones restrictivas de `MaxPosPhaseCorrection` en los endpoints corporativos para asegurar que, ante un eventual bypass de red, el sistema operativo rechace saltos temporales bruscos que comprometan la validez de los logs de auditoría o los tokens de autenticación.
+Un factor crítico para el despliegue del escenario fue la correcta identificación y asignación de la dirección IP de la máquina atacante (Ubuntu) dentro de la red inalámbrica del microcontrolador. Debido a que el servidor DNS embebido en la ESP32 requiere conocer con exactitud el destino de la redirección, cualquier desajuste en este parámetro impide que los paquetes alterados lleguen al script de escucha en el puerto 123 UDP. Sin esta alineación previa en el firmware, las solicitudes de la víctima se perderían en la red, impidiendo visualizar el tráfico en el atacante o registrar cambios en el horario del host objetivo.
+
+En las evidencias visuales presentadas a continuación, se detalla la secuencia completa de configuración e impacto del ataque en ambos nodos:
+
+![alt text](rsc/config_AP.gif)
+
+*Grabación 1: Monitoreo serial desde la computadora atacante (Linux) durante la conexión y configuración de direccionamiento IP en el Access Point (ESP32).*
+
+![alt text](rsc/ataque_desde_Linux.gif)
+
+*Grabación 2: Captura de la terminal del host atacante (Linux) procesando las peticiones interceptadas en tiempo real.*
+
+![alt text](rsc/ataque_desde_windows.gif)
+
+*Grabación 3: Interfaz de usuario de la computadora víctima (Windows) manifestando la asimilación del salto temporal tras la consulta NTP.*
+
+---
+
+### Análisis del Comportamiento en Simultáneo
+
+Tal como se aprecia en los registros multimedia capturados en paralelo, el monitor serial de la ESP32 documentó el momento exacto en el que la víctima se asoció al punto de acceso, recibiendo la dirección IP `192.168.4.4` vía DHCP, mientras que al nodo atacante se le asignó la dirección `192.168.4.2`.
+
+Al forzar la actualización horaria en Windows (despachando la petición UDP hacia `time.google.com`), el script en Ubuntu interceptó el datagrama, decodificó la marca de tiempo de transmisión del cliente y calculó dinámicamente la respuesta sumándole un primer desfase de prueba de 300 segundos (5 minutos). Tras recibir este paquete legítimo a nivel estructural, el motor local de Windows validó la muestra y actualizó su reloj.
+
+Inmediatamente después, se repitió el procedimiento incrementando el argumento de desfase a 600 segundos (10 minutos). El flujo de control se ejecutó de manera idéntica: el script arrastró de forma matemática la percepción temporal de la víctima, obligando al sistema operativo a consolidar un segundo salto temporal acumulativo hacia el futuro, demostrando la reproducibilidad y efectividad del vector de ataque implementado.
+
+---
+
+## 7. Conclusiones y Contramedidas
+
+La realización de este laboratorio sobre hardware real confirma que los ataques de manipulación temporal en capas de aplicación son altamente efectivos si el atacante posee el control del enrutamiento de la red local. La validación estructural básica de los paquetes NTP estándar resulta insuficiente si los atacantes reconstruyen los datagramas respetando de forma matemática las solicitudes previas del cliente.
+
+### Contramedidas Recomendadas
+
+1. **Migración a NTS (Network Time Security):** Adoptar el uso de mecanismos que incorporen cifrado y autenticación criptográfica basada en TLS para validar la identidad de los servidores de tiempo externos.
+2. **Uso de Claves Simétricas:** En entornos aislados o corporativos tradicionales, configurar directivas de autenticación mediante llaves compartidas (`ntp.keys`) para asegurar la integridad de los mensajes UDP.
+3. **Hardening de Políticas de Fase:** Mantener estrictos los umbrales de `MaxPosPhaseCorrection` en los sistemas finales para asegurar que, ante un eventual bypass de red, el sistema operativo rechace saltos temporales abruptos.
