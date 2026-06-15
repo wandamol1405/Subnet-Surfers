@@ -144,6 +144,97 @@ Por esta razón, aunque el tráfico de entrada sea cero, el sistema sigue trabaj
 
 ### 4. Primera infraestructura mínima
 
+La arquitectura inicial fue diseñada para cubrir todos los tipos de tráfico indicados por la consigna: estático, uploads, lecturas, escrituras, búsquedas y tráfico malicioso. Se construyó en modo sandbox con la siguiente configuración:
 
+| Componente        | Función en esta arquitectura                                 | Costo |
+| ----------------- | ------------------------------------------------------------ | ----- |
+| **Firewall**      | Filtra el tráfico malicioso antes de que llegue al sistema   | $40   |
+| **Queue**         | Actúa como buffer entre el Firewall y el Compute             | $45   |
+| **Compute (T1)**  | Procesa las solicitudes legítimas                            | $60   |
+| **Storage (S3)**  | Almacena y sirve tráfico STATIC y UPLOAD                     | $25   |
+| **SQL DB (T1)**   | Procesa operaciones READ y WRITE                             | $150  |
+| **Search Engine** | Atiende las consultas SEARCH de forma eficiente              | $120  |
 
+Costo total inicial: **$440**
 
+#### Esquema de la arquitectura
+
+```text
+Internet → [Firewall] → [Queue] → [Compute] → [Storage]
+                                             → [SQL DB]
+                                             → [Search Engine]
+```
+
+#### a) Arquitectura inicial
+
+![Arquitectura inicial](Images/punto4_arquitectura_inicial.png)
+
+#### b) Presupuesto inicial
+
+El presupuesto inicial en modo sandbox es de **$2000**. Luego del despliegue de los componentes, el presupuesto restante fue de **$1560** ($2000 - $440). El upkeep con esta arquitectura es de aproximadamente **$61/min** (Firewall: $4 + Queue: $3 + Compute: $12 + Storage: $5 + SQL DB: $24 + Search: $16), aunque en modo sandbox el upkeep está desactivado por defecto.
+
+#### c) Comportamiento ante variaciones de tráfico
+
+El siguiente video muestra el comportamiento del sistema al incrementar el rate de tráfico progresivamente y los fallos que comienzan a aparecer en el nodo Compute:
+
+![Fallas ante incremento de tráfico](Images/punto4_fallas.gif)
+
+Al inicio, con un rate bajo (1-2 req/s), todos los servicios responden sin fallas. A medida que se incrementa el rate por encima de los **3-4 req/s**, el Compute comienza a acumular carga y las solicitudes empiezan a fallar. La Queue absorbe el exceso momentáneamente, pero si el rate se mantiene alto, el Compute no puede procesar la cola a tiempo y los fallos se acumulan.
+
+---
+
+#### ¿Qué componente falló primero?
+
+El primer componente en fallar fue el nodo **Compute**. A partir de los 3,3 req/s, la tasa de fallos comenzó a subir visiblemente: el Compute opera con una capacidad de solo 4 solicitudes concurrentes (Tier 1) y un tiempo de procesamiento de 600 ms, lo que implica un throughput máximo teórico de ~6,67 req/s. Sin embargo, el juego aplica una penalización de fallos que comienza cuando el nodo supera el **50% de su carga**, lo que en la práctica limita la operación segura a ~3,3 req/s.
+
+#### ¿Por qué creés que falló?
+
+El diseño inicial concentra todo el procesamiento en un único nodo Compute. A medida que el rate aumentó, ese nodo se saturó y comenzó a fallar solicitudes de forma creciente. La Queue ayudó a suavizar los picos momentáneos, pero no resuelve el problema de fondo: la capacidad de procesamiento es insuficiente para el volumen de tráfico.
+
+#### ¿Fue un problema de capacidad, diseño, costo o seguridad?
+
+Fue principalmente un problema de **capacidad y diseño**. La arquitectura mínima no escala por sí sola: un solo Compute T1 es insuficiente para tasas de tráfico superiores a 3 req/s. El diseño no contempla distribución de carga, lo que hace que el Compute sea un punto único de falla. Los componentes de Storage y base de datos no llegaron a saturarse en esta etapa, ya que el cuello de botella estaba antes de ellos.
+
+---
+
+### 5. Escalabilidad y balanceo
+
+Se partió de la arquitectura del punto 4 y se aplicaron dos estrategias de escalado distintas para soportar mayor tráfico.
+
+#### Estrategia 1: Agregar más capacidad de cómputo (escalado vertical)
+
+Se actualizó el nodo Compute de **Tier 1** a **Tier 2** (costo adicional: $100), lo que aumentó su capacidad de 4 a 10 solicitudes concurrentes. Esto elevó el throughput máximo seguro de ~3,3 req/s a ~8,3 req/s.
+
+**Resultado observado:** La cantidad de fallos se redujo significativamente al aumentar el rate. El nodo pudo absorber más solicitudes simultáneas. Sin embargo, a medida que el tráfico siguió creciendo, la base de datos comenzó a mostrar mayor carga debido al volumen de operaciones READ, WRITE y SEARCH que llegaban a ella.
+
+**Limitación observada:** El escalado vertical del Compute mejora el throughput pero no resuelve los problemas que se generan aguas abajo (DB saturada). El sistema mejoró pero no indefinidamente.
+
+![Estrategia 1 - Upgrade Compute T2](Images/punto5_estrategia_compute.gif)
+
+---
+
+#### Estrategia 2: Agregar Load Balancer y múltiples instancias de cómputo (escalado horizontal con distribución)
+
+Se agregó un **Load Balancer** (costo: $50) y una segunda instancia de **Compute T1** (costo: $60), reemplazando el Compute único de la arquitectura base. La arquitectura quedó de la siguiente manera:
+
+```text
+Internet → [Firewall] → [Queue] → [Load Balancer] → [Compute #1] → [Storage]
+                                                   → [Compute #2] → [SQL DB]
+                                                                  → [Search Engine]
+```
+
+**Resultado observado:** Con el Load Balancer distribuyendo el tráfico entre dos nodos Compute, la carga se repartió de forma equitativa. Cada instancia operó por debajo del umbral crítico del 50%, lo que redujo la tasa de fallos considerablemente incluso con rates altos. La capacidad efectiva del sistema se duplicó respecto al punto de partida.
+
+**Comparación con la estrategia 1:** El upgrade vertical del Compute T2 tuvo un costo de $100, mientras que el escalado horizontal con un segundo Compute T1 + Load Balancer tuvo un costo de $110. Sin embargo, la estrategia horizontal ofrece mejor tolerancia a fallos: si uno de los Compute falla, el otro sigue atendiendo tráfico.
+
+![Estrategia 2 - Load Balancer + 2 Compute](Images/punto5_estrategia2_lb.gif)
+
+---
+
+#### ¿Escalar horizontalmente siempre mejora el sistema?
+
+No siempre. El simulador mostró que escalar horizontalmente en Compute *sin* un Load Balancer no mejora el rendimiento, ya que el tráfico continúa concentrándose en un solo nodo. El escalado horizontal solo es efectivo cuando existe un mecanismo de distribución (Load Balancer o Queue) que garantice que la carga se reparta entre las instancias.
+
+Además, cuando el cuello de botella se desplaza al componente de base de datos (SQL DB), agregar más nodos Compute no produce mejora alguna: el tráfico llega más rápido a la DB, pero ésta sigue procesando a la misma velocidad. En ese caso, la mejora correcta es agregar una caché para absorber lecturas repetidas, agregar réplicas de lectura o upgradear la DB, no seguir escalando el Compute.
+
+En conclusión: el escalado horizontal mejora el sistema *únicamente* cuando el cuello de botella identificado está en el componente que se escala, y siempre que exista la infraestructura de distribución necesaria para aprovechar las instancias adicionales.
